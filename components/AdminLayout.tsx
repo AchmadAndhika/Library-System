@@ -18,16 +18,16 @@ import {
 
 // ── Nav items ──────────────────────────────────────────────────────────────
 // Sesuaikan href dengan struktur folder app/ kamu:
-//   app/page.tsx          → "/"
-//   app/books/page.tsx    → "/books"
-//   app/members/page.tsx  → "/members"
-//   app/reports/page.tsx  → "/reports"
+//   app/dashboard/page.tsx          → "/"
+//   app/dashboard/books/page.tsx    → "/dashboard/books"
+//   app/dashboard/members/page.tsx  → "/dashboard/members"
+//   app/dashboard/reports/page.tsx  → "/dashboard/reports"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
-  { href: "/books", label: "Manage Books", icon: <BookOpen size={16} /> },
-  { href: "/members", label: "Members", icon: <Users size={16} /> },
-  { href: "/reports", label: "Reports", icon: <BarChart3 size={16} /> },
+  { href: "/dashboard/books", label: "Manage Books", icon: <BookOpen size={16} /> },
+  { href: "/dashboard/members", label: "Members", icon: <Users size={16} /> },
+  { href: "/dashboard/reports", label: "Reports", icon: <BarChart3 size={16} /> },
 ];
 
 // ── Sidebar ────────────────────────────────────────────────────────────────

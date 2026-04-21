@@ -3,7 +3,6 @@
 // app/members/page.tsx
 
 import { useState } from "react";
-import AdminLayout from "@/components/AdminLayout";
 import {
   Search,
   UserPlus,
@@ -133,7 +132,6 @@ export default function MembersPage() {
   const suspendedCount = members.filter((m) => m.status === "suspended").length;
 
   return (
-    <AdminLayout>
       <div className="space-y-8">
         {/* Page Header */}
         <div className="flex justify-between items-start">
@@ -344,6 +342,5 @@ export default function MembersPage() {
           )}
         </div>
       </div>
-    </AdminLayout>
   );
 }

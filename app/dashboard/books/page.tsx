@@ -3,7 +3,7 @@
 // app/books/page.tsx
 
 import { useState } from "react";
-import AdminLayout from "@/components/AdminLayout";
+
 import {
   Plus,
   Search,
@@ -79,7 +79,7 @@ function AddBookModal({ onClose, onAdd }: { onClose: () => void; onAdd: (b: Omit
                 placeholder={f.placeholder}
                 value={(form as any)[f.key]}
                 onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white"
               />
             </div>
           ))}
@@ -89,7 +89,7 @@ function AddBookModal({ onClose, onAdd }: { onClose: () => void; onAdd: (b: Omit
               <select
                 value={form.category}
                 onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none bg-gray-50 focus:ring-2 focus:ring-blue-500"
+               className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white"
               >
                 {["Fiction", "Technology", "Science", "History", "Self-Help"].map((c) => (
                   <option key={c}>{c}</option>
@@ -102,7 +102,7 @@ function AddBookModal({ onClose, onAdd }: { onClose: () => void; onAdd: (b: Omit
                 type="number" min={1}
                 value={form.copies}
                 onChange={(e) => setForm((p) => ({ ...p, copies: Number(e.target.value) }))}
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm outline-none bg-gray-50 focus:ring-2 focus:ring-blue-500"
+               className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white"
               />
             </div>
           </div>
@@ -146,7 +146,7 @@ export default function BooksPage() {
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-8">
         {/* Page Header */}
         <div className="flex justify-between items-start">
@@ -253,6 +253,6 @@ export default function BooksPage() {
       </div>
 
       {showModal && <AddBookModal onClose={() => setShowModal(false)} onAdd={handleAdd} />}
-    </AdminLayout>
+    </>
   );
 }
