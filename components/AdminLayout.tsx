@@ -1,8 +1,6 @@
 "use client";
 
 // components/AdminLayout.tsx
-// ✅ Sidebar pakai <Link> dari next/link — klik langsung pindah halaman
-// ✅ Active state otomatis deteksi dari pathname
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,14 +12,8 @@ import {
   Search,
   Bell,
   HelpCircle,
+  UserCircle,
 } from "lucide-react";
-
-// ── Nav items ──────────────────────────────────────────────────────────────
-// Sesuaikan href dengan struktur folder app/ kamu:
-//   app/page.tsx          → "/"
-//   app/books/page.tsx    → "/books"
-//   app/members/page.tsx  → "/members"
-//   app/reports/page.tsx  → "/reports"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
@@ -29,8 +21,6 @@ const navItems = [
   { href: "/members", label: "Members", icon: <Users size={16} /> },
   { href: "/reports", label: "Reports", icon: <BarChart3 size={16} /> },
 ];
-
-// ── Sidebar ────────────────────────────────────────────────────────────────
 
 function AdminSidebar() {
   const pathname = usePathname();
@@ -64,11 +54,20 @@ function AdminSidebar() {
           );
         })}
       </nav>
+
+      {/* Switch to User */}
+      <div className="px-4 pt-4 border-t border-gray-100">
+        <Link
+          href="/user/explore"
+          className="flex items-center space-x-3 p-3 rounded-lg text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors group"
+        >
+          <UserCircle size={16} className="group-hover:text-blue-600" />
+          <span className="text-sm font-semibold">Switch to User</span>
+        </Link>
+      </div>
     </aside>
   );
 }
-
-// ── Header ─────────────────────────────────────────────────────────────────
 
 function AdminHeader() {
   return (
@@ -102,7 +101,6 @@ function AdminHeader() {
               Head Librarian
             </p>
           </div>
-          {/* Kalau mau pakai foto asli ganti baris ini dengan <Image src="/daniel.jpg" .../> */}
           <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-500 flex items-center justify-center text-blue-600 font-bold text-sm">
             SJ
           </div>
@@ -111,8 +109,6 @@ function AdminHeader() {
     </header>
   );
 }
-
-// ── Layout Wrapper ─────────────────────────────────────────────────────────
 
 export default function AdminLayout({
   children,

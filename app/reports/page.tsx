@@ -1,110 +1,150 @@
-// app/reports/page.tsx
-// Server Component — tidak butuh "use client"
+"use client";
 
+import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import {
   BookOpen,
   CheckCircle,
   ArrowRightLeft,
-  DollarSign,
+  Clock,
+  RefreshCw,
   Download,
+  Search,
 } from "lucide-react";
 
-// ── Dummy Data ─────────────────────────────────────────────────────────────
+type Book = {
+  isbn: string;
+  title: string;
+  cover: string | null;
+  author: string;
+  quantity: number;
+};
+type Borrow = {
+  id: number;
+  member_name: string;
+  title: string;
+  author: string;
+  cover: string | null;
+  borrow_date: string;
+  due_date: string;
+  returned_date: string | null;
+  status: string;
+  user_id: string;
+};
 
-const monthlyData = [
-  { month: "Jan", borrowed: 320, returned: 295 },
-  { month: "Feb", borrowed: 380, returned: 340 },
-  { month: "Mar", borrowed: 410, returned: 390 },
-  { month: "Apr", borrowed: 360, returned: 350 },
-  { month: "May", borrowed: 430, returned: 400 },
-  { month: "Jun", borrowed: 390, returned: 370 },
-];
-
-const categoryData = [
-  { name: "Fiction", count: 4520, pct: 42, color: "#2563eb" },
-  { name: "Technology", count: 3110, pct: 30, color: "#60a5fa" },
-  { name: "Others", count: 4820, pct: 28, color: "#e5e7eb" },
-];
-
-const finesData = [
-  {
-    name: "Marcus Wright",
-    email: "m.wright@university.edu",
-    type: "Faculty",
-    borrowed: 5,
-    fines: 15.5,
-  },
-  {
-    name: "Sarah Kim",
-    email: "s.kim@public.org",
-    type: "Public",
-    borrowed: 0,
-    fines: 25.0,
-  },
-  {
-    name: "Priya Sharma",
-    email: "p.sharma@university.edu",
-    type: "Faculty",
-    borrowed: 4,
-    fines: 5.0,
-  },
-];
-
-const maxBorrowed = Math.max(...monthlyData.map((d) => d.borrowed));
-
-// ── Main Page ──────────────────────────────────────────────────────────────
+function getStatusStyle(status: string, dueDate: string) {
+  const isOverdue = status === "Active" && new Date() > new Date(dueDate);
+  if (isOverdue)
+    return { label: "Overdue", className: "bg-red-100 text-red-600" };
+  if (status === "Active")
+    return { label: "Active", className: "bg-blue-100 text-blue-700" };
+  return { label: "Returned", className: "bg-green-100 text-green-700" };
+}
 
 export default function ReportsPage() {
-  const totalFines = finesData.reduce((s, m) => s + m.fines, 0);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [borrows, setBorrows] = useState<Borrow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [booksRes, borrowsRes] = await Promise.all([
+        fetch("/api/books"),
+        fetch("/api/borrows"),
+      ]);
+      const booksJson = await booksRes.json();
+      const borrowsJson = await borrowsRes.json();
+      setBooks(booksJson.data ?? []);
+      setBorrows(borrowsJson.data ?? []);
+    } catch {
+      console.error("Gagal fetch data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  const activeBorrows = borrows.filter((b) => b.status === "Active");
+  const returnedBorrows = borrows.filter((b) => b.status === "Returned");
+  const overdueBorrows = borrows.filter(
+    (b) => b.status === "Active" && new Date() > new Date(b.due_date)
+  );
+
+  // Bar chart per bulan
+  const monthCounts: Record<string, { borrowed: number; returned: number }> =
+    {};
+  borrows.forEach((b) => {
+    const month = new Date(b.borrow_date).toLocaleString("default", {
+      month: "short",
+    });
+    if (!monthCounts[month]) monthCounts[month] = { borrowed: 0, returned: 0 };
+    monthCounts[month].borrowed++;
+    if (b.status === "Returned") monthCounts[month].returned++;
+  });
+  const monthlyData = Object.entries(monthCounts).slice(-6);
+  const maxVal = Math.max(...monthlyData.map(([, v]) => v.borrowed), 1);
+
+  const filteredBorrows = borrows.filter(
+    (b) =>
+      b.member_name.toLowerCase().includes(search.toLowerCase()) ||
+      b.title.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <AdminLayout>
       <div className="space-y-8">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Reports
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Library performance overview and statistics
-          </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              Reports
+            </h1>
+            <p className="text-gray-500 mt-1">
+              Library performance overview and statistics
+            </p>
+          </div>
+          <button
+            onClick={fetchAll}
+            className="p-2.5 text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
 
-        {/* Summary Cards - same style as dashboard StatCard */}
+        {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             {
               title: "Total Books",
-              value: "8",
+              value: books.length,
               icon: <BookOpen size={16} />,
               iconBg: "bg-blue-100 text-blue-600",
-              change: "in catalog",
-              changeType: "neutral",
+              sub: "in catalog",
             },
             {
-              title: "Available",
-              value: "6",
-              icon: <CheckCircle size={16} />,
-              iconBg: "bg-green-100 text-green-600",
-              change: "books",
-              changeType: "neutral",
-            },
-            {
-              title: "Lent Out",
-              value: "2",
+              title: "Active Borrows",
+              value: activeBorrows.length,
               icon: <ArrowRightLeft size={16} />,
               iconBg: "bg-orange-100 text-orange-500",
-              change: "books",
-              changeType: "neutral",
+              sub: "ongoing",
             },
             {
-              title: "Total Fines",
-              value: `$${totalFines.toFixed(2)}`,
-              icon: <DollarSign size={16} />,
-              iconBg: "bg-emerald-100 text-emerald-600",
-              change: "outstanding",
-              changeType: "neutral",
+              title: "Returned",
+              value: returnedBorrows.length,
+              icon: <CheckCircle size={16} />,
+              iconBg: "bg-green-100 text-green-600",
+              sub: "confirmed",
+            },
+            {
+              title: "Overdue",
+              value: overdueBorrows.length,
+              icon: <Clock size={16} />,
+              iconBg: "bg-red-100 text-red-500",
+              sub: "need action",
             },
           ].map((s) => (
             <div
@@ -122,24 +162,24 @@ export default function ReportsPage() {
                     {s.title}
                   </span>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                    {s.change}
+                    {s.sub}
                   </span>
                 </div>
                 <p className="text-xl font-bold text-gray-900 mt-1">
-                  {s.value}
+                  {loading ? "..." : s.value}
                 </p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Charts Row */}
+        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Bar Chart */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-gray-900 text-lg">
-                Monthly Borrowing Activity
+                Borrow Activity by Month
               </h3>
               <div className="flex items-center gap-5 text-xs font-bold">
                 <span className="flex items-center gap-1.5">
@@ -152,175 +192,200 @@ export default function ReportsPage() {
                 </span>
               </div>
             </div>
-            <div className="flex items-end justify-between gap-3 h-52">
-              {monthlyData.map((data) => (
-                <div
-                  key={data.month}
-                  className="flex-1 flex flex-col items-center gap-2"
-                >
-                  <div className="w-full flex items-end justify-center gap-1 flex-1">
-                    <div
-                      className="w-full bg-blue-600 rounded-t-lg hover:bg-blue-700 transition-colors"
-                      style={{
-                        height: `${(data.borrowed / maxBorrowed) * 100}%`,
-                      }}
-                      title={`Borrowed: ${data.borrowed}`}
-                    />
-                    <div
-                      className="w-full bg-gray-200 rounded-t-lg hover:bg-gray-300 transition-colors"
-                      style={{
-                        height: `${(data.returned / maxBorrowed) * 100}%`,
-                      }}
-                      title={`Returned: ${data.returned}`}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500 font-semibold">
-                    {data.month}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Category Distribution */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 text-lg mb-6">
-              Category Distribution
-            </h3>
-
-            {/* Simple donut visual */}
-            <div className="flex items-center justify-center mb-6">
-              <div className="relative w-36 h-36 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full border-[18px] border-blue-100" />
-                <div
-                  className="absolute inset-0 rounded-full border-[18px] border-blue-600 border-t-transparent border-l-transparent"
-                  style={{ transform: "rotate(45deg)" }}
-                />
-                <div className="text-center z-10">
-                  <span className="block text-2xl font-extrabold text-gray-900">
-                    42%
-                  </span>
-                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wide">
-                    Fiction
-                  </span>
-                </div>
+            {monthlyData.length === 0 ? (
+              <div className="h-52 flex items-center justify-center text-gray-300 text-sm">
+                No data yet
               </div>
-            </div>
-
-            {/* Category bars */}
-            <div className="space-y-4">
-              {categoryData.map((cat) => (
-                <div key={cat.name}>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <div className="flex items-center gap-2">
+            ) : (
+              <div className="flex items-end justify-between gap-3 h-52">
+                {monthlyData.map(([month, data]) => (
+                  <div
+                    key={month}
+                    className="flex-1 flex flex-col items-center gap-2"
+                  >
+                    <div className="w-full flex items-end justify-center gap-1 flex-1">
                       <div
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: cat.color }}
+                        className="w-full bg-blue-600 rounded-t-lg hover:bg-blue-700 transition-colors"
+                        style={{ height: `${(data.borrowed / maxVal) * 100}%` }}
+                        title={`Borrowed: ${data.borrowed}`}
                       />
-                      <span className="font-semibold text-gray-700">
-                        {cat.name}
-                      </span>
+                      <div
+                        className="w-full bg-gray-200 rounded-t-lg hover:bg-gray-300 transition-colors"
+                        style={{ height: `${(data.returned / maxVal) * 100}%` }}
+                        title={`Returned: ${data.returned}`}
+                      />
                     </div>
-                    <span className="font-extrabold text-gray-900">
-                      {cat.count.toLocaleString()}
+                    <span className="text-xs text-gray-500 font-semibold">
+                      {month}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${cat.pct}%`,
-                        backgroundColor: cat.color,
-                      }}
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Book Stock */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h3 className="font-bold text-gray-900 text-lg mb-4">Book Stock</h3>
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+              {books.map((book) => (
+                <div key={book.isbn} className="flex items-center gap-3">
+                  {book.cover ? (
+                    <img
+                      src={book.cover}
+                      alt={book.title}
+                      className="w-8 h-11 object-cover rounded flex-shrink-0"
                     />
+                  ) : (
+                    <div className="w-8 h-11 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
+                      <BookOpen size={12} className="text-gray-300" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-800 truncate">
+                      {book.title}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {book.author}
+                    </p>
                   </div>
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                      book.quantity > 3
+                        ? "bg-green-100 text-green-700"
+                        : book.quantity > 0
+                        ? "bg-orange-100 text-orange-600"
+                        : "bg-red-100 text-red-600"
+                    }`}
+                  >
+                    {book.quantity}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Outstanding Fines Table */}
+        {/* Borrow History Table */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
-            <h3 className="font-bold text-gray-900 text-lg">
-              Outstanding Fines
-            </h3>
-            <button className="flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline cursor-pointer">
-              <Download size={15} />
-              Export Report
-            </button>
+          <div className="px-6 py-5 border-b border-gray-50 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h3 className="font-bold text-gray-900 text-lg">Borrow History</h3>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search
+                  size={13}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search member or book..."
+                  className="pl-8 pr-3 py-2 border border-gray-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
+                />
+              </div>
+              <button className="flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline cursor-pointer">
+                <Download size={15} /> Export
+              </button>
+            </div>
           </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-50 bg-gray-50/30">
-                {[
-                  "Member",
-                  "Type",
-                  "Books Borrowed",
-                  "Fine Amount",
-                  "Action",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-6 py-4 text-xs font-extrabold text-gray-400 uppercase tracking-widest"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {finesData
-                .sort((a, b) => b.fines - a.fines)
-                .map((member) => {
-                  const initials = member.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase();
+          {loading ? (
+            <div className="py-16 text-center text-gray-400">
+              <RefreshCw
+                size={28}
+                className="mx-auto mb-2 animate-spin opacity-40"
+              />
+              <p className="text-sm font-medium">Loading data...</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-50 bg-gray-50/30">
+                  {[
+                    "Member",
+                    "Book",
+                    "Borrow Date",
+                    "Due Date",
+                    "Returned",
+                    "Status",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left px-6 py-4 text-xs font-extrabold text-gray-400 uppercase tracking-widest"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredBorrows.map((borrow) => {
+                  const s = getStatusStyle(borrow.status, borrow.due_date);
                   return (
                     <tr
-                      key={member.name}
+                      key={borrow.id}
                       className="hover:bg-gray-50/80 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-extrabold flex-shrink-0">
-                            {initials}
-                          </div>
+                        <p className="font-bold text-gray-900">
+                          {borrow.member_name}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          ID: {borrow.user_id}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {borrow.cover && (
+                            <img
+                              src={borrow.cover}
+                              alt={borrow.title}
+                              className="w-7 h-10 object-cover rounded flex-shrink-0"
+                            />
+                          )}
                           <div>
-                            <p className="font-bold text-gray-900">
-                              {member.name}
+                            <p className="font-semibold text-gray-800 text-xs">
+                              {borrow.title}
                             </p>
                             <p className="text-xs text-gray-400">
-                              {member.email}
+                              {borrow.author}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-gray-500 font-semibold">
-                        {member.type}
+                      <td className="px-6 py-4 text-gray-500 text-xs">
+                        {new Date(borrow.borrow_date).toLocaleDateString(
+                          "id-ID"
+                        )}
                       </td>
-                      <td className="px-6 py-4 font-bold text-gray-700">
-                        {member.borrowed}
+                      <td className="px-6 py-4 text-gray-500 text-xs">
+                        {new Date(borrow.due_date).toLocaleDateString("id-ID")}
+                      </td>
+                      <td className="px-6 py-4 text-gray-500 text-xs">
+                        {borrow.returned_date
+                          ? new Date(borrow.returned_date).toLocaleDateString(
+                              "id-ID"
+                            )
+                          : "—"}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-red-600 font-extrabold text-base">
-                          ${member.fines.toFixed(2)}
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-bold ${s.className}`}
+                        >
+                          {s.label}
                         </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button className="px-4 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold rounded-xl transition-colors cursor-pointer">
-                          Mark Paid
-                        </button>
                       </td>
                     </tr>
                   );
                 })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          )}
+          {!loading && filteredBorrows.length === 0 && (
+            <div className="py-16 text-center text-gray-400">
+              <ArrowRightLeft size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="font-bold">No borrow records found</p>
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>
